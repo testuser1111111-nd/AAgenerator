@@ -34,6 +34,7 @@ namespace WinFormsApp1
                     }
                 }
                 ASCIIsarr[index] = (c, ui);
+                index++;
                 img.Dispose();
             }
         }
@@ -101,7 +102,7 @@ namespace WinFormsApp1
             textBox1.Text += "\r\n";
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            //textBox1.Text += sb.ToString();
+            textBox1.Text += sb.ToString();
             textBox1.Text += sw.Elapsed.ToString();
             textBox1.Text += "\r\n";
             GC.Collect();
