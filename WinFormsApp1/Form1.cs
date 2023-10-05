@@ -1,6 +1,7 @@
 global using System.Drawing;
 using Microsoft.VisualBasic.Logging;
 using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.Text;
 
 namespace WinFormsApp1
@@ -44,18 +45,50 @@ namespace WinFormsApp1
             textBox1.Text = string.Empty;
             sw.Start();
             Bitmap img = (Bitmap)Image.FromFile(textBox2.Text);
-            textBox1.Text += sw.Elapsed.ToString();
-            textBox1.Text += "\r\n";
-            bool[,] bools = new bool[img.Height, img.Width];
-            for (int i = 0; i < img.Height; i++)
+            textBox1.Text += img.PixelFormat + Environment.NewLine;
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
+            bool[][] bools = new bool[img.Height][];
+            int imgh = img.Height;
+            int imgw = img.Width;
+
+            Rectangle rect = new Rectangle(0, 0, imgw, imgh);
+            BitmapData bmpData = img.LockBits(rect, ImageLockMode.ReadOnly, img.PixelFormat);
+            IntPtr ptr = bmpData.Scan0;
+            int bytes = Math.Abs(bmpData.Stride) * imgh;
+            byte[] rgbValues = new byte[bytes];
+            System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
+            if (img.PixelFormat == PixelFormat.Format24bppRgb)
             {
-                for (int j = 0; j < img.Width; j++)
-                {
-                    bools[i, j] = img.GetPixel(j, i).GetBrightness() > 0.5;
-                }
+                Parallel.For(0, imgh, i => {
+                    bools[i] = new bool[imgw];
+                    for (int j = 0; j < imgw; j++)
+                    {
+                        bools[i][j] = ((int)rgbValues[i * 3 * imgw + j * 3]
+                            + (int)rgbValues[i * 3 * imgw + j * 3 + 1]
+                            + (int)rgbValues[i * 3 * imgw + j * 3 + 2]) > 384;
+                    }
+                });
             }
-            textBox1.Text += sw.Elapsed.ToString();
-            textBox1.Text += "\r\n";
+            else if(img.PixelFormat == PixelFormat.Format32bppArgb)
+            {
+                Parallel.For(0, imgh, i => {
+                    bools[i] = new bool[imgw];
+                    for (int j = 0; j < imgw; j++)
+                    {
+                        bools[i][j] = ((int)rgbValues[i * 4 * imgw + j * 4+1]
+                            + (int)rgbValues[i * 4 * imgw + j * 4 + 2]
+                            + (int)rgbValues[i * 4 * imgw + j * 4 + 3]) > 384;
+                    }
+                });
+            }
+            else
+            {
+                textBox1.Text = "サポート対象外のpixelformat";
+                return;
+            }
+            System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
+            img.UnlockBits(bmpData);
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
             //縦は16px横は8pxごとに区切る
             long divheight = (img.Height - 1) / 16 + 1;
             long divwidth = (img.Width - 1) / 8 + 1;
@@ -72,14 +105,13 @@ namespace WinFormsApp1
                     {
                         for (int l = 0; l < 8 & l + j * 8 < width; l++)
                         {
-                            boolss[i][j][k, l] = bools[i * 16 + k, j * 8 + l];
+                            boolss[i][j][k, l] = bools[i * 16 + k][ j * 8 + l];
                         }
                     }
                 }
             });
             img.Dispose();
-            textBox1.Text += sw.Elapsed.ToString();
-            textBox1.Text += "\r\n";
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
             StringBuilder sb = new StringBuilder();
             string[] results = new string[divheight];
             UInt128[][] converted = new UInt128[divheight][];
@@ -100,13 +132,11 @@ namespace WinFormsApp1
                     converted[i][j] = ui;
                 }
             });
-            textBox1.Text += sw.Elapsed.ToString();
-            textBox1.Text += "\r\n";
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            //textBox1.Text += sb.ToString();
-            textBox1.Text += sw.Elapsed.ToString();
-            textBox1.Text += "\r\n";
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
+            textBox1.Text += sb.ToString();
             GC.Collect();
         }
         public Task<string> ASCIItask(in long divwidth, in UInt128[] image)
