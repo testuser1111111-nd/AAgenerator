@@ -31,14 +31,14 @@
             button1 = new Button();
             textBox1 = new TextBox();
             textBox2 = new TextBox();
+            textBox3 = new TextBox();
             SuspendLayout();
             // 
             // button1
             // 
-            button1.Location = new Point(569, 34);
-            button1.Margin = new Padding(4, 4, 4, 4);
+            button1.Location = new Point(455, 27);
             button1.Name = "button1";
-            button1.Size = new Size(118, 36);
+            button1.Size = new Size(94, 29);
             button1.TabIndex = 1;
             button1.Text = "Convert";
             button1.UseVisualStyleBackColor = true;
@@ -48,33 +48,39 @@
             // 
             textBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             textBox1.Font = new Font("ＭＳ ゴシック", 16F, FontStyle.Regular, GraphicsUnit.Pixel);
-            textBox1.Location = new Point(0, 108);
-            textBox1.Margin = new Padding(4, 4, 4, 4);
+            textBox1.Location = new Point(0, 86);
             textBox1.MaxLength = 100000;
             textBox1.Multiline = true;
             textBox1.Name = "textBox1";
-            textBox1.Size = new Size(999, 454);
+            textBox1.Size = new Size(800, 364);
             textBox1.TabIndex = 2;
             textBox1.TextChanged += textBox1_TextChanged;
             // 
             // textBox2
             // 
-            textBox2.Location = new Point(15, 34);
-            textBox2.Margin = new Padding(4, 4, 4, 4);
+            textBox2.Location = new Point(12, 27);
             textBox2.Name = "textBox2";
-            textBox2.Size = new Size(545, 31);
+            textBox2.Size = new Size(437, 27);
             textBox2.TabIndex = 3;
             textBox2.Text = "test.png";
             // 
+            // textBox3
+            // 
+            textBox3.Location = new Point(569, 27);
+            textBox3.Margin = new Padding(2, 2, 2, 2);
+            textBox3.Name = "textBox3";
+            textBox3.Size = new Size(220, 27);
+            textBox3.TabIndex = 4;
+            // 
             // Form1
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1000, 562);
+            ClientSize = new Size(800, 450);
+            Controls.Add(textBox3);
             Controls.Add(textBox2);
             Controls.Add(textBox1);
             Controls.Add(button1);
-            Margin = new Padding(4, 4, 4, 4);
             Name = "Form1";
             Text = "Form1";
             ResumeLayout(false);
@@ -85,5 +91,6 @@
         private Button button1;
         private TextBox textBox1;
         private TextBox textBox2;
+        private TextBox textBox3;
     }
 }

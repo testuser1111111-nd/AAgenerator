@@ -47,8 +47,8 @@ namespace WinFormsApp1
             textBox1.Text = string.Empty;
             sw.Start();
             Bitmap img = (Bitmap)Image.FromFile(textBox2.Text);
-            textBox1.Text += img.PixelFormat + Environment.NewLine;
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.9
+            //textBox1.Text += img.PixelFormat + Environment.NewLine;
+            //textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.9
             long divheight = (img.Height - 1) / 16 + 1;
             long divwidth = (img.Width - 1) / 8 + 1;
             bool[][] bools = new bool[divheight*16][];
@@ -63,12 +63,13 @@ namespace WinFormsApp1
             if (img.PixelFormat == PixelFormat.Format24bppRgb)
             {
                 Parallel.For(0, imgh, i => {
+                    int wid = i * 3 * imgw;
                     bools[i] = new bool[divwidth*8];
                     for (int j = 0; j < imgw; j++)
                     {
-                        bools[i][j] = ((int)rgbValues[i * 3 * imgw + j * 3]
-                            + (int)rgbValues[i * 3 * imgw + j * 3 + 1]
-                            + (int)rgbValues[i * 3 * imgw + j * 3 + 2]) > 384;
+                        bools[i][j] = ((int)rgbValues[wid + j * 3]
+                            + (int)rgbValues[wid + j * 3 + 1]
+                            + (int)rgbValues[wid + j * 3 + 2]) >= 384;
                     }
                 });
             }
@@ -80,7 +81,7 @@ namespace WinFormsApp1
                     {
                         bools[i][j] = ((int)rgbValues[i * 4 * imgw + j * 4+1]
                             + (int)rgbValues[i * 4 * imgw + j * 4 + 2]
-                            + (int)rgbValues[i * 4 * imgw + j * 4 + 3]) > 384;
+                            + (int)rgbValues[i * 4 * imgw + j * 4 + 3]) >= 384;
                     }
                 });
             }
@@ -89,9 +90,10 @@ namespace WinFormsApp1
                 textBox1.Text = "サポート対象外のpixelformat";
                 return;
             }
+            Parallel.For(imgh, divheight * 16, i => { bools[i] = new bool[divwidth * 8]; });
             System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
             img.UnlockBits(bmpData);
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.8
+            //textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.8
             //縦は16px横は8pxごとに区切る
             long height = img.Height;
             long width = img.Width;
@@ -127,13 +129,13 @@ namespace WinFormsApp1
                     converted[i][j] = ui;
                 }
             });
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.7
+            //textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.7
             StringBuilder sb = new StringBuilder();
             string[] results = new string[divheight];
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.6
-            textBox1.Text += sb.ToString();
+            textBox3.Text = sw.Elapsed.ToString();//1.6
+            textBox1.Text = sb.ToString();
             GC.Collect();
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
