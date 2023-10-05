@@ -60,49 +60,51 @@ namespace WinFormsApp1
             long divheight = (img.Height - 1) / 16 + 1;
             long divwidth = (img.Width - 1) / 8 + 1;
             bool[][][,] boolss = new bool[divheight][][,];
-            for (int i = 0; i < divheight; i++)
+            long height = img.Height;
+            long width = img.Width;
+            Parallel.For(0, divheight, i =>
             {
                 boolss[i] = new bool[divwidth][,];
                 for (int j = 0; j < divwidth; j++)
                 {
                     boolss[i][j] = new bool[16, 8];
-                    for (int k = 0; k < 16 & k + i * 16 < img.Height; k++)
+                    for (int k = 0; k < 16 & k + i * 16 < height; k++)
                     {
-                        for (int l = 0; l < 8 & l + j * 8 < img.Width; l++)
+                        for (int l = 0; l < 8 & l + j * 8 < width; l++)
                         {
                             boolss[i][j][k, l] = bools[i * 16 + k, j * 8 + l];
                         }
                     }
                 }
-            }
+            });
             img.Dispose();
             textBox1.Text += sw.Elapsed.ToString();
             textBox1.Text += "\r\n";
             StringBuilder sb = new StringBuilder();
             string[] results = new string[divheight];
             UInt128[][] converted = new UInt128[divheight][];
-            for(int i = 0; i < divheight; i++)
+            Parallel.For(0, divheight, i =>
             {
                 converted[i] = new UInt128[divwidth];
-                for(int  j = 0; j < divwidth; j++)
+                for (int j = 0; j < divwidth; j++)
                 {
                     UInt128 ui = 0;
-                    for(int k = 0; k < 16; k++)
+                    for (int k = 0; k < 16; k++)
                     {
-                        for(int l = 0; l < 8; l++)
+                        for (int l = 0; l < 8; l++)
                         {
                             ui <<= 1;
-                            ui |= (boolss[i][j][k, l]?1u:0);
+                            ui |= (boolss[i][j][k, l] ? 1u : 0);
                         }
                     }
                     converted[i][j] = ui;
                 }
-            }
+            });
             textBox1.Text += sw.Elapsed.ToString();
             textBox1.Text += "\r\n";
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            textBox1.Text += sb.ToString();
+            //textBox1.Text += sb.ToString();
             textBox1.Text += sw.Elapsed.ToString();
             textBox1.Text += "\r\n";
             GC.Collect();
