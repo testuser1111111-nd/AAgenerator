@@ -2,6 +2,7 @@ global using System.Drawing;
 using Microsoft.VisualBasic.Logging;
 using System.Diagnostics;
 using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace WinFormsApp1
@@ -39,6 +40,7 @@ namespace WinFormsApp1
                 img.Dispose();
             }
         }
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         private void button1_Click(object sender, EventArgs e)
         {
             Stopwatch sw = new Stopwatch();
@@ -46,11 +48,12 @@ namespace WinFormsApp1
             sw.Start();
             Bitmap img = (Bitmap)Image.FromFile(textBox2.Text);
             textBox1.Text += img.PixelFormat + Environment.NewLine;
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
-            bool[][] bools = new bool[img.Height][];
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.9
+            long divheight = (img.Height - 1) / 16 + 1;
+            long divwidth = (img.Width - 1) / 8 + 1;
+            bool[][] bools = new bool[divheight*16][];
             int imgh = img.Height;
             int imgw = img.Width;
-
             Rectangle rect = new Rectangle(0, 0, imgw, imgh);
             BitmapData bmpData = img.LockBits(rect, ImageLockMode.ReadOnly, img.PixelFormat);
             IntPtr ptr = bmpData.Scan0;
@@ -60,7 +63,7 @@ namespace WinFormsApp1
             if (img.PixelFormat == PixelFormat.Format24bppRgb)
             {
                 Parallel.For(0, imgh, i => {
-                    bools[i] = new bool[imgw];
+                    bools[i] = new bool[divwidth*8];
                     for (int j = 0; j < imgw; j++)
                     {
                         bools[i][j] = ((int)rgbValues[i * 3 * imgw + j * 3]
@@ -72,7 +75,7 @@ namespace WinFormsApp1
             else if(img.PixelFormat == PixelFormat.Format32bppArgb)
             {
                 Parallel.For(0, imgh, i => {
-                    bools[i] = new bool[imgw];
+                    bools[i] = new bool[divwidth*8];
                     for (int j = 0; j < imgw; j++)
                     {
                         bools[i][j] = ((int)rgbValues[i * 4 * imgw + j * 4+1]
@@ -88,32 +91,11 @@ namespace WinFormsApp1
             }
             System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
             img.UnlockBits(bmpData);
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.8
             //c‚Í16px‰¡‚Í8px‚²‚Æ‚É‹æØ‚é
-            long divheight = (img.Height - 1) / 16 + 1;
-            long divwidth = (img.Width - 1) / 8 + 1;
-            bool[][][,] boolss = new bool[divheight][][,];
             long height = img.Height;
             long width = img.Width;
-            Parallel.For(0, divheight, i =>
-            {
-                boolss[i] = new bool[divwidth][,];
-                for (int j = 0; j < divwidth; j++)
-                {
-                    boolss[i][j] = new bool[16, 8];
-                    for (int k = 0; k < 16 & k + i * 16 < height; k++)
-                    {
-                        for (int l = 0; l < 8 & l + j * 8 < width; l++)
-                        {
-                            boolss[i][j][k, l] = bools[i * 16 + k][ j * 8 + l];
-                        }
-                    }
-                }
-            });
             img.Dispose();
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
-            StringBuilder sb = new StringBuilder();
-            string[] results = new string[divheight];
             UInt128[][] converted = new UInt128[divheight][];
             Parallel.For(0, divheight, i =>
             {
@@ -121,24 +103,40 @@ namespace WinFormsApp1
                 for (int j = 0; j < divwidth; j++)
                 {
                     UInt128 ui = 0;
-                    for (int k = 0; k < 16; k++)
+                    ulong ul1 = 0;
+                    ulong ul2 = 0;
+                    for (int k = 0; k < 8; k++)
                     {
                         for (int l = 0; l < 8; l++)
                         {
-                            ui <<= 1;
-                            ui |= (boolss[i][j][k, l] ? 1u : 0);
+                            ul1 <<= 1;
+                            ul1 |= (byte)(bools[i * 16 + k][j * 8 + l] ? 1 : 0);
                         }
                     }
+                    for (int k = 8; k < 16; k++)
+                    {
+                        for (int l = 0; l < 8; l++)
+                        {
+                            ul2 <<= 1;
+                            ul2 |= (byte)(bools[i * 16 + k][j * 8 + l] ? 1 : 0);
+                        }
+                    }
+                    ui |= ul1;
+                    ui <<= 64;
+                    ui |= ul2;
                     converted[i][j] = ui;
                 }
             });
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.7
+            StringBuilder sb = new StringBuilder();
+            string[] results = new string[divheight];
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;
+            textBox1.Text += sw.Elapsed.ToString() + Environment.NewLine;//1.6
             textBox1.Text += sb.ToString();
             GC.Collect();
         }
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public Task<string> ASCIItask(in long divwidth, in UInt128[] image)
         {
 
