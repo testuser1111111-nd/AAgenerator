@@ -1,14 +1,17 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ConsoleApp1
 {
-    public class Program 
+    public class Program //7813
     {
-        public static (char, UInt128)[] ASCIIsarr;
+        public static (char, UInt64,UInt64)[] ASCIIsarr;
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main(string[] args)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -16,9 +19,28 @@ namespace ConsoleApp1
                 throw new PlatformNotSupportedException();
             }
             LoadASCIIs();
+            Console.ReadKey();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            Console.BackgroundColor = ConsoleColor.White;
+            Console.ForegroundColor = ConsoleColor.Black;
+            for (int i = 1; i <= 13149; i++)
+            {
+                long ms = ShowAA(string.Format("./ba/{0:0000}.png",i));
+                Console.WriteLine(ms+"ms");
+                Console.WriteLine(string.Format("{0}sec({1}flame)",i/60,i));
+                Console.WriteLine(stopwatch.Elapsed.ToString());
+                //Thread.Sleep(1);//たぶんここのオーバーヘッドがデカい 1ms待機のはずが10msくらい待機してる
+                //Task.Delay(1).Wait();//表示が何故かおかしくなる
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static int ShowAA(string path)
+        {
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            Bitmap img = (Bitmap)Image.FromFile(Console.ReadLine());
+            Bitmap img = (Bitmap)Image.FromFile(path);
             long divheight = (img.Height - 1) / 16 + 1;
             long divwidth = (img.Width - 1) / 8 + 1;
             bool[][] bools = new bool[divheight * 16][];
@@ -58,7 +80,7 @@ namespace ConsoleApp1
             else
             {
                 Console.WriteLine("Image Format Not Supported");
-                return;
+                return 0;
             }
             Parallel.For(imgh, divheight * 16, i => { bools[i] = new bool[divwidth * 8]; });
             System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
@@ -67,13 +89,12 @@ namespace ConsoleApp1
             long height = img.Height;
             long width = img.Width;
             img.Dispose();
-            UInt128[][] converted = new UInt128[divheight][];
+            (UInt64,UInt64)[][] converted = new (UInt64,UInt64)[divheight][];
             Parallel.For(0, divheight, i =>
             {
-                converted[i] = new UInt128[divwidth];
+                converted[i] = new (UInt64, UInt64)[divwidth];
                 for (int j = 0; j < divwidth; j++)
                 {
-                    UInt128 ui = 0;
                     ulong ul1 = 0;
                     ulong ul2 = 0;
                     for (int k = 0; k < 8; k++)
@@ -92,19 +113,18 @@ namespace ConsoleApp1
                             ul2 |= (byte)(bools[i * 16 + k][j * 8 + l] ? 1 : 0);
                         }
                     }
-                    ui |= ul1;
-                    ui <<= 64;
-                    ui |= ul2;
-                    converted[i][j] = ui;
+                    converted[i][j] = (ul1,ul2);
                 }
             });
             StringBuilder sb = new StringBuilder();
             string[] results = new string[divheight];
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            Console.WriteLine(sb.ToString());
+            //Console.WriteLine(sb.ToString());
+            return (int)sw.ElapsedMilliseconds;
             GC.Collect();
         }
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void LoadASCIIs()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -113,41 +133,54 @@ namespace ConsoleApp1
             }
             var files = Directory.EnumerateFiles(".\\ASCIIimages");
             int count = files.Count();
-            ASCIIsarr = new (char, UInt128)[files.Count()];
+            ASCIIsarr = new (char, UInt64,UInt64)[files.Count()];
             int index = 0;
             foreach (var file in files)
             {
                 Bitmap img = (Bitmap)Image.FromFile(file);
                 string[] splitted = file.Split('\\');
                 var c = (char)int.Parse(splitted[splitted.Length - 1].Split('.')[0]);
-                UInt128 ui = 0;
-                for (int i = 0; i < 16; i++)
+                UInt64 ul1 = 0;
+                UInt64 ul2 = 0;
+                for (int i = 0; i < 8; i++)
                 {
                     for (int j = 0; j < 8; j++)
                     {
-                        ui <<= 1;
-                        ui |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 1u : 0;
+                        ul1 <<= 1;
+                        ul1 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 1u : 0;
                     }
                 }
-                ASCIIsarr[index] = (c, ui);
+                for (int i = 8; i < 16; i++)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+                        ul2 <<= 1;
+                        ul2 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 1u : 0;
+                    }
+                }
+                ASCIIsarr[index] = (c, ul1,ul2);
                 index++;
                 img.Dispose();
             }
         }
-        public static Task<string> ASCIItask(in long divwidth, in UInt128[] image)
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static Task<string> ASCIItask(in long divwidth, in (UInt64,UInt64)[] image)
         {
 
             StringBuilder sb = new StringBuilder();
             for (int j = 0; j < divwidth; j++)
             {
-                UInt128 hanspace = UInt128.MaxValue;
-                UInt128 cost = UInt128.PopCount(hanspace ^ image[j]);
+                (UInt64,UInt64) hanspace = (UInt64.MaxValue,UInt64.MaxValue);
+                long cost = BitOperations.PopCount(hanspace.Item1 ^ image[j].Item1)
+                    + BitOperations.PopCount(hanspace.Item2 ^ image[j].Item2);
                 char chr = ' ';
                 for (int k = 0; k < ASCIIsarr.Length; k++)
                 {
-                    if (cost > UInt128.PopCount(ASCIIsarr[k].Item2 ^ image[j]))
+                    if (cost > BitOperations.PopCount(ASCIIsarr[k].Item2 ^ image[j].Item1)
+                        + BitOperations.PopCount(ASCIIsarr[k].Item3 ^ image[j].Item2))
                     {
-                        cost = UInt128.PopCount(ASCIIsarr[k].Item2 ^ image[j]);
+                        cost = BitOperations.PopCount(ASCIIsarr[k].Item2 ^ image[j].Item1)
+                        + BitOperations.PopCount(ASCIIsarr[k].Item3 ^ image[j].Item2);
                         chr = ASCIIsarr[k].Item1;
                     }
                 }
