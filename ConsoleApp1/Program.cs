@@ -8,7 +8,7 @@ using System.Text;
 
 namespace ConsoleApp1
 {
-    public class Program //7813
+    public class Program
     {
         public static (char, UInt64,UInt64)[] ASCIIsarr;
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
@@ -26,20 +26,18 @@ namespace ConsoleApp1
             Console.ForegroundColor = ConsoleColor.Black;
             for (int i = 1; i <= 13149; i++)
             {
-                long ms = ShowAA(string.Format("./ba/{0:0000}.png",i));
-                Console.WriteLine(ms+"ms");
+                ShowAA(string.Format("./ba/{0:0000}.png",i));
                 Console.WriteLine(string.Format("{0}sec({1}flame)",i/60,i));
                 Console.WriteLine(stopwatch.Elapsed.ToString());
                 //Thread.Sleep(1);//たぶんここのオーバーヘッドがデカい 1ms待機のはずが10msくらい待機してる
-                //Task.Delay(1).Wait();//表示が何故かおかしくなる
+                Task.Delay(1).Wait();//表示が何故かおかしくなる
             }
+            Console.ReadKey();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static int ShowAA(string path)
+        public static void ShowAA(string path)
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
             Bitmap img = (Bitmap)Image.FromFile(path);
             long divheight = (img.Height - 1) / 16 + 1;
             long divwidth = (img.Width - 1) / 8 + 1;
@@ -80,7 +78,7 @@ namespace ConsoleApp1
             else
             {
                 Console.WriteLine("Image Format Not Supported");
-                return 0;
+                return;
             }
             Parallel.For(imgh, divheight * 16, i => { bools[i] = new bool[divwidth * 8]; });
             System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
@@ -120,9 +118,8 @@ namespace ConsoleApp1
             string[] results = new string[divheight];
             Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
             for (int i = 0; i < divheight; i++) sb.Append(results[i]);
-            //Console.WriteLine(sb.ToString());
-            return (int)sw.ElapsedMilliseconds;
-            GC.Collect();
+            Console.WriteLine(sb.ToString());
+            return;
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void LoadASCIIs()
