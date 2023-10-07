@@ -1,16 +1,19 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.VisualBasic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
-
+using System.Media;
 namespace ConsoleApp1
 {
     public class Program
     {
-        public static (char, UInt64,UInt64)[] ASCIIsarr;
+        public static (char, UInt64, UInt64)[] ASCIIsarr;
+        public static ulong[] ASCIIsarr1;
+        public static ulong[] ASCIIsarr2;
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main(string[] args)
         {
@@ -20,106 +23,140 @@ namespace ConsoleApp1
             }
             LoadASCIIs();
             Console.ReadKey();
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
-            for (int i = 1; i <= 13149; i++)
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            playsound();
+            while ((sw.ElapsedMilliseconds * 60) / 1000 < 13150)
             {
-                ShowAA(string.Format("./ba/{0:0000}.png",i));
-                Console.WriteLine(string.Format("{0}sec({1}flame)",i/60,i));
-                Console.WriteLine(stopwatch.Elapsed.ToString());
-                //Thread.Sleep(1);//たぶんここのオーバーヘッドがデカい 1ms待機のはずが10msくらい待機してる
-                Task.Delay(1).Wait();//表示が何故かおかしくなる
+                ShowAA(string.Format("./ba/{0:0000}.png", (sw.ElapsedMilliseconds * 60) / 1000));
+                Console.WriteLine(string.Format("{0}sec({1}frame)", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
+                Console.WriteLine(sw.Elapsed.ToString());
+
+                //このメソッドは、システム クロックに依存します。
+                //つまり、引数がシステム クロックの解像度(Windows システムでは約 15 ミリ秒) より小さい場合、
+                //遅延時間はシステム クロックの解像度とほぼ等しくなります。
+                Task.Delay(1).Wait();
             }
             Console.ReadKey();
         }
+        public static  void playsound()
+        {
+            SoundPlayer soundPlayer = new SoundPlayer();
+            soundPlayer.SoundLocation = "ba.wav";
+            soundPlayer.Load();
+            soundPlayer.Play();
 
+        }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void ShowAA(string path)
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                throw new PlatformNotSupportedException();
+            }
             Bitmap img = (Bitmap)Image.FromFile(path);
-            long divheight = (img.Height - 1) / 16 + 1;
-            long divwidth = (img.Width - 1) / 8 + 1;
-            bool[][] bools = new bool[divheight * 16][];
+            int divheight = (img.Height - 1) / 16 + 1;
+            int divwidth = (img.Width - 1) / 8 + 1;
+            ulong[][] bytesarr = new ulong[divheight*16][];
             int imgh = img.Height;
             int imgw = img.Width;
-            Rectangle rect = new Rectangle(0, 0, imgw, imgh);
-            BitmapData bmpData = img.LockBits(rect, ImageLockMode.ReadOnly, img.PixelFormat);
+            BitmapData bmpData = img.LockBits(new Rectangle(0, 0, imgw, imgh), ImageLockMode.ReadOnly, img.PixelFormat);
             IntPtr ptr = bmpData.Scan0;
             int bytes = Math.Abs(bmpData.Stride) * imgh;
             byte[] rgbValues = new byte[bytes];
-            System.Runtime.InteropServices.Marshal.Copy(ptr, rgbValues, 0, bytes);
+            Marshal.Copy(ptr, rgbValues, 0, bytes);//ここのコピー、Unsafeでどうにかしたい
             if (img.PixelFormat == PixelFormat.Format24bppRgb)
             {
                 Parallel.For(0, imgh, i => {
                     int wid = i * 3 * imgw;
-                    bools[i] = new bool[divwidth * 8];
+                    bytesarr[i] = new ulong[divwidth];
                     for (int j = 0; j < imgw; j++)
                     {
-                        bools[i][j] = ((int)rgbValues[wid + j * 3]
+                        bytesarr[i][j >> 3] |= (((int)rgbValues[wid + j * 3]
                             + (int)rgbValues[wid + j * 3 + 1]
-                            + (int)rgbValues[wid + j * 3 + 2]) >= 384;
+                            + (int)rgbValues[wid + j * 3 + 2]) >= 384 ? (byte)(1 << ((j & 0x7)^0x7)) : (byte)0);
                     }
                 });
             }
             else if (img.PixelFormat == PixelFormat.Format32bppArgb)
             {
                 Parallel.For(0, imgh, i => {
-                    bools[i] = new bool[divwidth * 8];
+                    int wid = i * 4 * imgw;
+                    bytesarr[i] = new ulong[divwidth];
                     for (int j = 0; j < imgw; j++)
                     {
-                        bools[i][j] = ((int)rgbValues[i * 4 * imgw + j * 4 + 1]
-                            + (int)rgbValues[i * 4 * imgw + j * 4 + 2]
-                            + (int)rgbValues[i * 4 * imgw + j * 4 + 3]) >= 384;
+                        bytesarr[i][j >> 3] |= (((int)rgbValues[wid + j * 4 + 1]
+                            + (int)rgbValues[wid + j * 4 + 2]
+                            + (int)rgbValues[wid + j * 4 + 3]) >= 384 ? (byte)(1 << ((j & 0x7) ^ 0x7)) : (byte)0);
                     }
                 });
             }
             else
             {
                 Console.WriteLine("Image Format Not Supported");
-                return;
+                return ;
             }
-            Parallel.For(imgh, divheight * 16, i => { bools[i] = new bool[divwidth * 8]; });
+            Parallel.For(imgh, divheight * 16, i => { bytesarr[i] = new ulong[divwidth]; });
             System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
             img.UnlockBits(bmpData);
             //縦は16px横は8pxごとに区切る
             long height = img.Height;
             long width = img.Width;
             img.Dispose();
-            (UInt64,UInt64)[][] converted = new (UInt64,UInt64)[divheight][];
+            ulong[][] converted1 = new ulong[divheight][];
+            ulong[][] converted2 = new ulong[divheight][];
             Parallel.For(0, divheight, i =>
             {
-                converted[i] = new (UInt64, UInt64)[divwidth];
+                //ここはVectorで回すと逆に遅くなる
+                converted1[i] = new ulong[divwidth];
+                converted2[i] = new ulong[divwidth];
                 for (int j = 0; j < divwidth; j++)
                 {
                     ulong ul1 = 0;
                     ulong ul2 = 0;
                     for (int k = 0; k < 8; k++)
                     {
-                        for (int l = 0; l < 8; l++)
-                        {
-                            ul1 <<= 1;
-                            ul1 |= (byte)(bools[i * 16 + k][j * 8 + l] ? 1 : 0);
-                        }
+                        ul1 <<= 8;
+                        ul2 <<= 8;
+                        ul1 |= bytesarr[(i << 4) | k][j];
+                        ul2 |= bytesarr[(i << 4) | k | 8][j];
                     }
-                    for (int k = 8; k < 16; k++)
-                    {
-                        for (int l = 0; l < 8; l++)
-                        {
-                            ul2 <<= 1;
-                            ul2 |= (byte)(bools[i * 16 + k][j * 8 + l] ? 1 : 0);
-                        }
-                    }
-                    converted[i][j] = (ul1,ul2);
+                    converted1[i][j] = ul1;
+                    converted2[i][j] = ul2;
                 }
             });
             StringBuilder sb = new StringBuilder();
-            string[] results = new string[divheight];
-            Parallel.For(0, divheight, i => { results[i] = ASCIItask(divwidth, converted[i]).Result; });
-            for (int i = 0; i < divheight; i++) sb.Append(results[i]);
+            var results = new char[divheight][];
+            Parallel.For(0, divheight, i => {
+                //ここはVectorで回すと逆に遅くなる
+                results[i] = new char[divwidth];
+                for (int j = 0; j < divwidth; j++)
+                {
+                    ulong i1 = converted1[i][j];
+                    ulong i2 = converted2[i][j];
+                    ulong cost = 128 - Popcnt.X64.PopCount(i1) - Popcnt.X64.PopCount(i2);
+                    char chr = ' ';
+                    for (int k = 33; k < 127; k++)
+                    {
+                        ulong tempcost = Popcnt.X64.PopCount(ASCIIsarr1[k] ^ i1) + Popcnt.X64.PopCount(ASCIIsarr2[k] ^ i2);
+                        if (cost > tempcost)
+                        {
+                            cost = tempcost;
+                            chr = (char)k;
+                        }
+                    }
+                    results[i][j] = chr;
+                }
+            });
+            for (int i = 0; i < divheight; i++)
+            {
+                sb.Append(results[i]);
+                sb.AppendLine();
+            }
             Console.WriteLine(sb.ToString());
-            return;
+            return ;
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void LoadASCIIs()
@@ -130,7 +167,9 @@ namespace ConsoleApp1
             }
             var files = Directory.EnumerateFiles(".\\ASCIIimages");
             int count = files.Count();
-            ASCIIsarr = new (char, UInt64,UInt64)[files.Count()];
+            ASCIIsarr = new (char, UInt64, UInt64)[files.Count()];
+            ASCIIsarr1 = new ulong[127];
+            ASCIIsarr2 = new ulong[127];
             int index = 0;
             foreach (var file in files)
             {
@@ -156,35 +195,35 @@ namespace ConsoleApp1
                     }
                 }
                 ASCIIsarr[index] = (c, ul1,ul2);
+                ASCIIsarr1[c] = ul1;
+                ASCIIsarr2[c] = ul2;
                 index++;
                 img.Dispose();
             }
         }
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static Task<string> ASCIItask(in long divwidth, in (UInt64,UInt64)[] image)
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
+        public static Task<char[]> ASCIItask(in long divwidth, in ulong[] image,in ulong[] image2)
         {
-
-            StringBuilder sb = new StringBuilder();
-            for (int j = 0; j < divwidth; j++)
+            //ここはVectorで回すと逆に遅くなる
+            char[] result = new char[divwidth];
+            for(int j = 0; j < divwidth; j++)
             {
-                (UInt64,UInt64) hanspace = (UInt64.MaxValue,UInt64.MaxValue);
-                long cost = BitOperations.PopCount(hanspace.Item1 ^ image[j].Item1)
-                    + BitOperations.PopCount(hanspace.Item2 ^ image[j].Item2);
+                ulong i1 = image[j];
+                ulong i2 = image2[j];
+                ulong cost = 128- Popcnt.X64.PopCount(i1)-Popcnt.X64.PopCount(i2);
                 char chr = ' ';
-                for (int k = 0; k < ASCIIsarr.Length; k++)
+                for (int k = 33; k < 127; k++)
                 {
-                    if (cost > BitOperations.PopCount(ASCIIsarr[k].Item2 ^ image[j].Item1)
-                        + BitOperations.PopCount(ASCIIsarr[k].Item3 ^ image[j].Item2))
+                    ulong tempcost = Popcnt.X64.PopCount(ASCIIsarr1[k] ^ i1) + Popcnt.X64.PopCount(ASCIIsarr2[k] ^ i2);
+                    if (cost > tempcost)
                     {
-                        cost = BitOperations.PopCount(ASCIIsarr[k].Item2 ^ image[j].Item1)
-                        + BitOperations.PopCount(ASCIIsarr[k].Item3 ^ image[j].Item2);
-                        chr = ASCIIsarr[k].Item1;
+                        cost = tempcost;
+                        chr = (char)k;
                     }
                 }
-                sb.Append(chr);
+                result[j] = chr;
             }
-            sb.AppendLine();
-            return Task.FromResult<string>(sb.ToString());
+            return Task.FromResult<char[]>(result);
         }
     }
 
