@@ -31,8 +31,7 @@
             button1 = new Button();
             textBox1 = new TextBox();
             textBox2 = new TextBox();
-            checkBox1 = new CheckBox();
-            checkBox2 = new CheckBox();
+            textBox3 = new TextBox();
             SuspendLayout();
             // 
             // button1
@@ -65,33 +64,20 @@
             textBox2.TabIndex = 3;
             textBox2.Text = "test.png";
             // 
-            // checkBox1
+            // textBox3
             // 
-            checkBox1.AutoSize = true;
-            checkBox1.Location = new Point(558, 32);
-            checkBox1.Name = "checkBox1";
-            checkBox1.Size = new Size(98, 24);
-            checkBox1.TabIndex = 6;
-            checkBox1.Text = "ASCII only";
-            checkBox1.UseVisualStyleBackColor = true;
-            // 
-            // checkBox2
-            // 
-            checkBox2.AutoSize = true;
-            checkBox2.Location = new Point(662, 32);
-            checkBox2.Name = "checkBox2";
-            checkBox2.Size = new Size(99, 24);
-            checkBox2.TabIndex = 7;
-            checkBox2.Text = "Fast Mode";
-            checkBox2.UseVisualStyleBackColor = true;
+            textBox3.Location = new Point(569, 27);
+            textBox3.Margin = new Padding(2, 2, 2, 2);
+            textBox3.Name = "textBox3";
+            textBox3.Size = new Size(220, 27);
+            textBox3.TabIndex = 4;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(checkBox2);
-            Controls.Add(checkBox1);
+            Controls.Add(textBox3);
             Controls.Add(textBox2);
             Controls.Add(textBox1);
             Controls.Add(button1);
@@ -105,7 +91,6 @@
         private Button button1;
         private TextBox textBox1;
         private TextBox textBox2;
-        private CheckBox checkBox1;
-        private CheckBox checkBox2;
+        private TextBox textBox3;
     }
 }
