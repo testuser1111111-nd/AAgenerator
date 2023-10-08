@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Media;
+
 namespace ConsoleApp1
 {
     public class Program
@@ -23,28 +24,46 @@ namespace ConsoleApp1
             }
             LoadASCIIs();
             Console.ReadKey();
+            Console.Clear();
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
             Stopwatch sw = new Stopwatch();
             sw.Start();
             playsound();
-            while ((sw.ElapsedMilliseconds * 60) / 1000 < 13150)
+            long nowframe = 0;
+            int skipped = 0;
+            int max = Directory.GetFiles("./images").Length;
+            
+            while ((sw.ElapsedMilliseconds * 60) / 1000 < max-5)
             {
-                ShowAA(string.Format("./ba/{0:0000}.png", (sw.ElapsedMilliseconds * 60) / 1000));
+                if (nowframe +1 < (sw.ElapsedMilliseconds * 60) / 1000 + 1)
+                {
+                    skipped++;
+                }
+                nowframe = (sw.ElapsedMilliseconds * 60) / 1000 + 1;
+                Console.CursorTop = 0;
+                ShowAA(string.Format("./images/{0}.png", (sw.ElapsedMilliseconds * 60) / 1000 +1));
                 Console.WriteLine(string.Format("{0}sec({1}frame)", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
                 Console.WriteLine(sw.Elapsed.ToString());
-
-                //このメソッドは、システム クロックに依存します。
-                //つまり、引数がシステム クロックの解像度(Windows システムでは約 15 ミリ秒) より小さい場合、
-                //遅延時間はシステム クロックの解像度とほぼ等しくなります。
-                Task.Delay(1).Wait();
+                Console.WriteLine("skipped frames:{0}",skipped);
+                //Task.Delay(1).Wait();//システムクロックの解像度が15msなので実質15msくらい待つ;
             }
+            /*
+            for(int i = 1;i<= max; i++)
+            {
+                Console.CursorTop = 0;
+                ShowAA(string.Format("./images/{0}.png", i));
+                Console.WriteLine(string.Format("{0}sec({1}frame)", i/60, i));
+                Console.WriteLine(sw.Elapsed.ToString());
+            }
+            */
+            Console.WriteLine(sw.Elapsed.TotalMicroseconds / max);
             Console.ReadKey();
         }
         public static  void playsound()
         {
             SoundPlayer soundPlayer = new SoundPlayer();
-            soundPlayer.SoundLocation = "ba.wav";
+            soundPlayer.SoundLocation = "sound.wav";
             soundPlayer.Load();
             soundPlayer.Play();
 
@@ -60,13 +79,11 @@ namespace ConsoleApp1
             int divheight = (img.Height - 1) / 16 + 1;
             int divwidth = (img.Width - 1) / 8 + 1;
             ulong[][] bytesarr = new ulong[divheight*16][];
+            //*
             int imgh = img.Height;
             int imgw = img.Width;
             BitmapData bmpData = img.LockBits(new Rectangle(0, 0, imgw, imgh), ImageLockMode.ReadOnly, img.PixelFormat);
             IntPtr ptr = bmpData.Scan0;
-            int bytes = Math.Abs(bmpData.Stride) * imgh;
-            byte[] rgbValues = new byte[bytes];
-            Marshal.Copy(ptr, rgbValues, 0, bytes);//ここのコピー、Unsafeでどうにかしたい
             if (img.PixelFormat == PixelFormat.Format24bppRgb)
             {
                 Parallel.For(0, imgh, i => {
@@ -74,9 +91,11 @@ namespace ConsoleApp1
                     bytesarr[i] = new ulong[divwidth];
                     for (int j = 0; j < imgw; j++)
                     {
-                        bytesarr[i][j >> 3] |= (((int)rgbValues[wid + j * 3]
-                            + (int)rgbValues[wid + j * 3 + 1]
-                            + (int)rgbValues[wid + j * 3 + 2]) >= 384 ? (byte)(1 << ((j & 0x7)^0x7)) : (byte)0);
+                        unsafe
+                        {
+                            byte* adr = (byte*)ptr;
+                            bytesarr[i][j>>3] |= ((int)adr[wid + j*3]+ (int)adr[wid + j * 3 + 1]+ (int)adr[wid + j * 3 + 2]) >= 384 ? (byte)(1 << ((j & 0x7)^0x7)) : (byte)0;
+                        }
                     }
                 });
             }
@@ -87,9 +106,11 @@ namespace ConsoleApp1
                     bytesarr[i] = new ulong[divwidth];
                     for (int j = 0; j < imgw; j++)
                     {
-                        bytesarr[i][j >> 3] |= (((int)rgbValues[wid + j * 4 + 1]
-                            + (int)rgbValues[wid + j * 4 + 2]
-                            + (int)rgbValues[wid + j * 4 + 3]) >= 384 ? (byte)(1 << ((j & 0x7) ^ 0x7)) : (byte)0);
+                        unsafe
+                        {
+                            byte* adr = (byte*)ptr;
+                            bytesarr[i][j >> 3] |= ((int)adr[wid + j * 4 +1] + (int)adr[wid + j * 4 + 2] + (int)adr[wid + j * 4 + 3]) >= 384 ? (byte)(1 << ((j & 0x7) ^ 0x7)) : (byte)0;
+                        }
                     }
                 });
             }
@@ -99,12 +120,13 @@ namespace ConsoleApp1
                 return ;
             }
             Parallel.For(imgh, divheight * 16, i => { bytesarr[i] = new ulong[divwidth]; });
-            System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, ptr, bytes);
             img.UnlockBits(bmpData);
             //縦は16px横は8pxごとに区切る
             long height = img.Height;
             long width = img.Width;
             img.Dispose();
+            //*/
+            Parallel.For(imgh, divheight * 16, i => { bytesarr[i] = new ulong[divwidth]; });
             ulong[][] converted1 = new ulong[divheight][];
             ulong[][] converted2 = new ulong[divheight][];
             Parallel.For(0, divheight, i =>
@@ -155,7 +177,7 @@ namespace ConsoleApp1
                 sb.Append(results[i]);
                 sb.AppendLine();
             }
-            Console.WriteLine(sb.ToString());
+            //Console.WriteLine(sb.ToString());
             return ;
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
