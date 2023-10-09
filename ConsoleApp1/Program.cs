@@ -18,55 +18,49 @@ namespace ConsoleApp1
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main(string[] args)
         {
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = false });
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                Console.WriteLine("this program only works on windows. sorry!");
                 throw new PlatformNotSupportedException();
             }
             LoadASCIIs();
+            Console.WriteLine("Press any key to start.");
+            Console.Out.Flush();
             Console.ReadKey();
             Console.Clear();
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
             Stopwatch sw = new Stopwatch();
             sw.Start();
-            playsound();
+            SoundPlayer soundPlayer = new SoundPlayer();
+            soundPlayer.SoundLocation = "sound.wav";
+            soundPlayer.Load();
+            soundPlayer.Play();
             long nowframe = 0;
             int skipped = 0;
             int max = Directory.GetFiles("./images").Length;
-            
+            int rendered = 0;
             while ((sw.ElapsedMilliseconds * 60) / 1000 < max-5)
             {
                 if (nowframe +1 < (sw.ElapsedMilliseconds * 60) / 1000 + 1)
                 {
                     skipped++;
                 }
+                rendered++;
                 nowframe = (sw.ElapsedMilliseconds * 60) / 1000 + 1;
                 Console.CursorTop = 0;
-                ShowAA(string.Format("./images/{0}.png", (sw.ElapsedMilliseconds * 60) / 1000 +1));
-                Console.WriteLine(string.Format("{0}sec({1}frame)", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
+                ShowAA(string.Format("./images/{0}.jpg", (sw.ElapsedMilliseconds * 60) / 1000 +1));
+                //Console.WriteLine(string.Format("{0}sec({1}frame)", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
                 Console.WriteLine(sw.Elapsed.ToString());
-                Console.WriteLine("skipped frames:{0}",skipped);
-                //Task.Delay(1).Wait();//システムクロックの解像度が15msなので実質15msくらい待つ;
+                //Console.WriteLine("skipped frames:{0}",skipped);
+                Console.WriteLine("rendered frames:{0}", rendered);
+                Console.Out.Flush();
             }
-            /*
-            for(int i = 1;i<= max; i++)
-            {
-                Console.CursorTop = 0;
-                ShowAA(string.Format("./images/{0}.png", i));
-                Console.WriteLine(string.Format("{0}sec({1}frame)", i/60, i));
-                Console.WriteLine(sw.Elapsed.ToString());
-            }
-            */
-            Console.WriteLine(sw.Elapsed.TotalMicroseconds / max);
+            //Console.WriteLine(sw.Elapsed.TotalMicroseconds / rendered);
+            Console.WriteLine("Press any key to exit");
+            Console.Out.Flush();
             Console.ReadKey();
-        }
-        public static  void playsound()
-        {
-            SoundPlayer soundPlayer = new SoundPlayer();
-            soundPlayer.SoundLocation = "sound.wav";
-            soundPlayer.Load();
-            soundPlayer.Play();
-
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void ShowAA(string path)
@@ -177,7 +171,7 @@ namespace ConsoleApp1
                 sb.Append(results[i]);
                 sb.AppendLine();
             }
-            //Console.WriteLine(sb.ToString());
+            Console.WriteLine(sb.ToString());
             return ;
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
