@@ -16,7 +16,7 @@ namespace ConsoleApp1
         public static ulong[] ASCIIsarr1;
         public static ulong[] ASCIIsarr2;
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void Main(string[] args)
+        public static void Main()
         {
             Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = false });
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -31,10 +31,9 @@ namespace ConsoleApp1
             Console.Clear();
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.Black;
-            Stopwatch sw = new Stopwatch();
+            Stopwatch sw = new();
             sw.Start();
-            SoundPlayer soundPlayer = new SoundPlayer();
-            soundPlayer.SoundLocation = "sound.wav";
+            SoundPlayer soundPlayer = new("sound.wav");
             soundPlayer.Load();
             soundPlayer.Play();
             long nowframe = 0;
@@ -143,7 +142,7 @@ namespace ConsoleApp1
                     converted2[i][j] = ul2;
                 }
             });
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             var results = new char[divheight][];
             Parallel.For(0, divheight, i => {
                 //ここはVectorで回すと逆に遅くなる
@@ -182,7 +181,6 @@ namespace ConsoleApp1
                 throw new PlatformNotSupportedException();
             }
             var files = Directory.EnumerateFiles(".\\ASCIIimages");
-            int count = files.Count();
             ASCIIsarr = new (char, UInt64, UInt64)[files.Count()];
             ASCIIsarr1 = new ulong[127];
             ASCIIsarr2 = new ulong[127];
@@ -191,7 +189,7 @@ namespace ConsoleApp1
             {
                 Bitmap img = (Bitmap)Image.FromFile(file);
                 string[] splitted = file.Split('\\');
-                var c = (char)int.Parse(splitted[splitted.Length - 1].Split('.')[0]);
+                var c = (char)int.Parse(splitted[^0].Split('.')[0]);
                 UInt64 ul1 = 0;
                 UInt64 ul2 = 0;
                 for (int i = 0; i < 8; i++)
