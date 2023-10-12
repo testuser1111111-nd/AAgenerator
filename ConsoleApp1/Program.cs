@@ -29,8 +29,6 @@ namespace ConsoleApp1
             Console.Out.Flush();
             Console.ReadKey();
             Console.Clear();
-            Console.BackgroundColor = ConsoleColor.White;
-            Console.ForegroundColor = ConsoleColor.Black;
             Stopwatch sw = new();
             sw.Start();
             SoundPlayer soundPlayer = new("sound.wav");
@@ -54,6 +52,7 @@ namespace ConsoleApp1
                 Console.WriteLine(sw.Elapsed.ToString());
                 //Console.WriteLine("skipped frames:{0}",skipped);
                 Console.WriteLine("rendered frames:{0}", rendered);
+                Console.WriteLine("Average Frame per second:{0}",rendered/sw.Elapsed.TotalSeconds);
                 Console.Out.Flush();
             }
             //Console.WriteLine(sw.Elapsed.TotalMicroseconds / rendered);
@@ -151,7 +150,7 @@ namespace ConsoleApp1
                 {
                     ulong i1 = converted1[i][j];
                     ulong i2 = converted2[i][j];
-                    ulong cost = 128 - Popcnt.X64.PopCount(i1) - Popcnt.X64.PopCount(i2);
+                    ulong cost = Popcnt.X64.PopCount(i1) + Popcnt.X64.PopCount(i2);
                     char chr = ' ';
                     for (int k = 33; k < 127; k++)
                     {
@@ -189,7 +188,7 @@ namespace ConsoleApp1
             {
                 Bitmap img = (Bitmap)Image.FromFile(file);
                 string[] splitted = file.Split('\\');
-                var c = (char)int.Parse(splitted[^0].Split('.')[0]);
+                var c = (char)int.Parse(splitted[^1].Split('.')[0]);
                 UInt64 ul1 = 0;
                 UInt64 ul2 = 0;
                 for (int i = 0; i < 8; i++)
@@ -197,7 +196,7 @@ namespace ConsoleApp1
                     for (int j = 0; j < 8; j++)
                     {
                         ul1 <<= 1;
-                        ul1 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 1u : 0;
+                        ul1 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 0 : 1u;
                     }
                 }
                 for (int i = 8; i < 16; i++)
@@ -205,7 +204,7 @@ namespace ConsoleApp1
                     for (int j = 0; j < 8; j++)
                     {
                         ul2 <<= 1;
-                        ul2 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 1u : 0;
+                        ul2 |= img.GetPixel(j, i).GetBrightness() > 0.5 ? 0 : 1u;
                     }
                 }
                 ASCIIsarr[index] = (c, ul1,ul2);
@@ -214,30 +213,6 @@ namespace ConsoleApp1
                 index++;
                 img.Dispose();
             }
-        }
-        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
-        public static Task<char[]> ASCIItask(in long divwidth, in ulong[] image,in ulong[] image2)
-        {
-            //ここはVectorで回すと逆に遅くなる
-            char[] result = new char[divwidth];
-            for(int j = 0; j < divwidth; j++)
-            {
-                ulong i1 = image[j];
-                ulong i2 = image2[j];
-                ulong cost = 128- Popcnt.X64.PopCount(i1)-Popcnt.X64.PopCount(i2);
-                char chr = ' ';
-                for (int k = 33; k < 127; k++)
-                {
-                    ulong tempcost = Popcnt.X64.PopCount(ASCIIsarr1[k] ^ i1) + Popcnt.X64.PopCount(ASCIIsarr2[k] ^ i2);
-                    if (cost > tempcost)
-                    {
-                        cost = tempcost;
-                        chr = (char)k;
-                    }
-                }
-                result[j] = chr;
-            }
-            return Task.FromResult<char[]>(result);
         }
     }
 
