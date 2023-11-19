@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Media;
+using OpenCvSharp;
 
 namespace ConsoleApp1
 {
@@ -16,6 +17,8 @@ namespace ConsoleApp1
         public static (char, ulong, ulong)[] ASCIIsarr;
         public static ulong[] ASCIIsarr1;
         public static ulong[] ASCIIsarr2;
+        public static VideoCapture vc;
+        public static Mat mat;
 #pragma warning restore CS8618 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main()
@@ -38,28 +41,27 @@ namespace ConsoleApp1
             SoundPlayer soundPlayer = new("sound.wav");
             soundPlayer.Load();
             soundPlayer.Play();
-            long nowframe = 0;
-            int skipped = 0;
-            int max = Directory.GetFiles("./images").Length;
+
+
+            string filename = "rick.mkv";
+            vc = new VideoCapture(filename);
+            mat = new Mat();
+            var framecount = vc.FrameCount;
+            var fps = vc.Fps;
+            int nowframe = 0;
             int rendered = 0;
             bool flag = false;
-            while ((sw.ElapsedMilliseconds * 60) / 1000 < max-5)
+            while ((sw.ElapsedMilliseconds * fps) / 1000 < framecount-5)
             {
-                if (nowframe +1 < (sw.ElapsedMilliseconds * 60) / 1000 + 1)
-                {
-                    skipped++;
-                }
                 rendered++;
-                nowframe = (sw.ElapsedMilliseconds * 60) / 1000 + 1;
+                nowframe = Convert.ToInt32((sw.ElapsedMilliseconds * fps) / 1000);
                 Console.CursorTop = 0;
-                ShowAA(string.Format("./images/{0}.jpg", (sw.ElapsedMilliseconds * 60) / 1000 + 1),512);// flag?512:384);
-                //Console.ForegroundColor = (ConsoleColor)(flag ? 15 :7);
-                //flag = !flag;
+                ShowAA(filename,nowframe,512);
                 //Console.WriteLine(string.Format("{1}frame", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
                 //Console.WriteLine(sw.Elapsed.ToString());
                 //Console.WriteLine("skipped frames:{0}",skipped);
                 //Console.WriteLine("converted frames:{0}", rendered);
-                //Console.WriteLine("Average Frame per second:{0}",rendered/sw.Elapsed.TotalSeconds);
+                Console.WriteLine("Average Frame per second:{0}",rendered/sw.Elapsed.TotalSeconds);
                 Console.Out.Flush();
             }
             //Console.WriteLine(sw.Elapsed.TotalMicroseconds / rendered);
@@ -68,13 +70,18 @@ namespace ConsoleApp1
             Console.ReadKey();
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void ShowAA(string path,int bound)
+        public unsafe static void ShowAA(string path,int frame,int bound)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 throw new PlatformNotSupportedException();
             }
-            Bitmap img = (Bitmap)Image.FromFile(path);
+            while (vc.PosFrames <= frame)
+            {
+                vc.Read(mat);
+            }
+            Bitmap img = null;
+            img = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(mat);
             int divheight = (img.Height - 1) / 16 + 1;
             int divwidth = (img.Width - 1) / 8 + 1;
             ulong[][] bytesarr = new ulong[divheight*16][];
