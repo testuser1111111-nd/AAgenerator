@@ -23,27 +23,29 @@ namespace ConsoleApp1
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main()
         {
-            Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = false });
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Console.WriteLine("this program only works on windows. sorry!");
-                Console.Out.Flush();
                 throw new PlatformNotSupportedException();
             }
             LoadASCIIs();
+            Console.WriteLine("動画ファイルのパスを入力 (同梱の動画は\".\\rick.mkv\")");
+            string filename = Console.ReadLine();
+            Console.WriteLine("音声ファイルのパスを入力（同梱の音声は\".\\sound.wav\"）");
+            string filename_sound = Console.ReadLine();
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = false });
             Console.Clear();
-            //Console.WriteLine("Press any key to start.");
+            Console.WriteLine("Press any key to start.");
             Console.Out.Flush();
             Console.ReadKey();
             Console.Clear();
             Stopwatch sw = new();
             sw.Start();
-            SoundPlayer soundPlayer = new("sound.wav");
+            SoundPlayer soundPlayer = new(filename_sound);
             soundPlayer.Load();
             soundPlayer.Play();
 
 
-            string filename = "rick.mkv";
             vc = new VideoCapture(filename);
             mat = new Mat();
             var framecount = vc.FrameCount;
