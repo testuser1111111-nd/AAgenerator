@@ -15,4 +15,4 @@ WinformsApp1のほうは遺産　触らない方がいい
 * 前処理に必要な時間無し　すぐ再生可能
 * しかもCPUの性能が良くて動画との相性が良ければ1920x1080pxの動画でも平均200fps出る(検証スペック CPU:Intel Core i7-11800H Memory:DDR4-3200 16GB Storage:SSD　コンパイル時最適化on)
 * 今のところ半角文字しか対応していないが、自由に使用する文字を選べる　フォント変更にも対応可能(ただしめんどい)
-* 外部ライブラリはWMPLibとかSystem.DrawingとかのMicrosoft謹製のものしか使ってないのでライセンス的に楽(ただしWindows上でしか今の所動かせない)
+* 使用ライブラリはWMPLibとSystem.DrawingとOpenCVSharp
