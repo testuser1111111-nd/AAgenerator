@@ -12,9 +12,11 @@ namespace ConsoleApp1
 {
     public class Program
     {
-        public static (char, UInt64, UInt64)[] ASCIIsarr;
+#pragma warning disable CS8618 
+        public static (char, ulong, ulong)[] ASCIIsarr;
         public static ulong[] ASCIIsarr1;
         public static ulong[] ASCIIsarr2;
+#pragma warning restore CS8618 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static void Main()
         {
@@ -22,10 +24,12 @@ namespace ConsoleApp1
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 Console.WriteLine("this program only works on windows. sorry!");
+                Console.Out.Flush();
                 throw new PlatformNotSupportedException();
             }
             LoadASCIIs();
-            Console.WriteLine("Press any key to start.");
+            Console.Clear();
+            //Console.WriteLine("Press any key to start.");
             Console.Out.Flush();
             Console.ReadKey();
             Console.Clear();
@@ -38,6 +42,7 @@ namespace ConsoleApp1
             int skipped = 0;
             int max = Directory.GetFiles("./images").Length;
             int rendered = 0;
+            bool flag = false;
             while ((sw.ElapsedMilliseconds * 60) / 1000 < max-5)
             {
                 if (nowframe +1 < (sw.ElapsedMilliseconds * 60) / 1000 + 1)
@@ -47,21 +52,23 @@ namespace ConsoleApp1
                 rendered++;
                 nowframe = (sw.ElapsedMilliseconds * 60) / 1000 + 1;
                 Console.CursorTop = 0;
-                ShowAA(string.Format("./images/{0}.jpg", (sw.ElapsedMilliseconds * 60) / 1000 +1));
-                //Console.WriteLine(string.Format("{0}sec({1}frame)", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
-                Console.WriteLine(sw.Elapsed.ToString());
+                ShowAA(string.Format("./images/{0}.jpg", (sw.ElapsedMilliseconds * 60) / 1000 + 1),512);// flag?512:384);
+                //Console.ForegroundColor = (ConsoleColor)(flag ? 15 :7);
+                //flag = !flag;
+                //Console.WriteLine(string.Format("{1}frame", (sw.ElapsedMilliseconds * 60) / 1000 / 60, (sw.ElapsedMilliseconds * 60) / 1000));
+                //Console.WriteLine(sw.Elapsed.ToString());
                 //Console.WriteLine("skipped frames:{0}",skipped);
-                Console.WriteLine("rendered frames:{0}", rendered);
-                Console.WriteLine("Average Frame per second:{0}",rendered/sw.Elapsed.TotalSeconds);
+                //Console.WriteLine("converted frames:{0}", rendered);
+                //Console.WriteLine("Average Frame per second:{0}",rendered/sw.Elapsed.TotalSeconds);
                 Console.Out.Flush();
             }
             //Console.WriteLine(sw.Elapsed.TotalMicroseconds / rendered);
-            Console.WriteLine("Press any key to exit");
+            //Console.WriteLine("Press any key to exit");
             Console.Out.Flush();
             Console.ReadKey();
         }
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void ShowAA(string path)
+        public static void ShowAA(string path,int bound)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -86,7 +93,7 @@ namespace ConsoleApp1
                         unsafe
                         {
                             byte* adr = (byte*)ptr;
-                            bytesarr[i][j>>3] |= ((int)adr[wid + j*3]+ (int)adr[wid + j * 3 + 1]+ (int)adr[wid + j * 3 + 2]) >= 384 ? (byte)(1 << ((j & 0x7)^0x7)) : (byte)0;
+                            bytesarr[i][j>>3] |= ((int)adr[wid + j*3]+ (int)adr[wid + j * 3 + 1]+ (int)adr[wid + j * 3 + 2]) >= bound ? (byte)(1 << ((j & 0x7)^0x7)) : (byte)0;
                         }
                     }
                 });
@@ -101,7 +108,7 @@ namespace ConsoleApp1
                         unsafe
                         {
                             byte* adr = (byte*)ptr;
-                            bytesarr[i][j >> 3] |= ((int)adr[wid + j * 4 +1] + (int)adr[wid + j * 4 + 2] + (int)adr[wid + j * 4 + 3]) >= 384 ? (byte)(1 << ((j & 0x7) ^ 0x7)) : (byte)0;
+                            bytesarr[i][j >> 3] |= ((int)adr[wid + j * 4 +1] + (int)adr[wid + j * 4 + 2] + (int)adr[wid + j * 4 + 3]) >= bound ? (byte)(1 << ((j & 0x7) ^ 0x7)) : (byte)0;
                         }
                     }
                 });
@@ -150,6 +157,10 @@ namespace ConsoleApp1
                 {
                     ulong i1 = converted1[i][j];
                     ulong i2 = converted2[i][j];
+                    /*画像側はbitが立ってると明るい
+                    スペースは全ピクセルが暗い = 0
+                    bitが立ってると明るくなる（黒背景に白文字なので）
+                    */
                     ulong cost = Popcnt.X64.PopCount(i1) + Popcnt.X64.PopCount(i2);
                     char chr = ' ';
                     for (int k = 33; k < 127; k++)
@@ -191,6 +202,7 @@ namespace ConsoleApp1
                 var c = (char)int.Parse(splitted[^1].Split('.')[0]);
                 UInt64 ul1 = 0;
                 UInt64 ul2 = 0;
+                //文字は画像が暗い方のbitを立たせる
                 for (int i = 0; i < 8; i++)
                 {
                     for (int j = 0; j < 8; j++)
